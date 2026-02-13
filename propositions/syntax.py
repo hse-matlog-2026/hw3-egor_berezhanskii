@@ -59,9 +59,7 @@ def is_binary(string: str) -> bool:
     Returns:
         ``True`` if the given string is a binary operator, ``False`` otherwise.
     """
-    return string == '&' or string == '|' or string == '->'
-    # For Chapter 3:
-    # return string in {'&', '|',  '->', '+', '<->', '-&', '-|'}
+    return string in {'&', '|',  '->', '+', '<->', '-&', '-|'}
 
 @frozen
 class Formula:
@@ -360,6 +358,21 @@ class Formula:
         for variable in substitution_map:
             assert is_variable(variable)
         # Task 3.3
+        def recursion_helper(cur: Optional[Formula]) -> Optional[Formula]:
+            if is_variable(cur.root):
+                if cur.root in substitution_map:
+                    return substitution_map[cur.root]
+                else:
+                    return cur
+            elif is_constant(cur.root):
+                return cur
+            elif is_binary(cur.root):
+                return Formula(cur.root, recursion_helper(cur.first), recursion_helper(cur.second))
+            elif is_unary(cur.root):
+                return Formula(cur.root, recursion_helper(cur.first))
+
+        return recursion_helper(self)
+
 
     def substitute_operators(self, substitution_map: Mapping[str, Formula]) -> \
             Formula:
@@ -390,3 +403,38 @@ class Formula:
                    is_binary(operator)
             assert substitution_map[operator].variables().issubset({'p', 'q'})
         # Task 3.4
+        def recursion_helper(cur: Optional[Formula]) -> Optional[Formula]:
+            if is_variable(cur.root):
+                return cur
+            elif is_constant(cur.root):
+                if cur.root in substitution_map:
+                    return substitution_map[cur.root]
+                return cur
+            elif is_binary(cur.root):
+                if cur.root in substitution_map:
+                    return Formula.substitute_variables(
+                        substitution_map[cur.root],
+                        {
+                            "p": Formula.substitute_operators(cur.first, substitution_map),
+                            "q": Formula.substitute_operators(cur.second, substitution_map),
+                         }
+                    )
+                return Formula(
+                    cur.root,
+                    Formula.substitute_operators(cur.first, substitution_map),
+                    Formula.substitute_operators(cur.second, substitution_map),
+                )
+            elif is_unary(cur.root):
+                if cur.root in substitution_map:
+                    return Formula.substitute_variables(
+                        substitution_map[cur.root],
+                        {
+                            "p": Formula.substitute_operators(cur.first, substitution_map),
+                        }
+                    )
+                return Formula(
+                    cur.root,
+                    Formula.substitute_operators(cur.first, substitution_map),
+                )
+
+        return recursion_helper(self)
